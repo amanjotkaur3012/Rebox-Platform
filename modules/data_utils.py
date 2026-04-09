@@ -137,6 +137,20 @@ def upload_dataset(uploaded_file):
         return None
 
 
+    # CLEAN COLUMN NAMES
+    df.columns = df.columns.str.strip()
+
+
+    # FIX DATE COLUMN
+    if "Date" in df.columns:
+        df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+
+
+    st.session_state["dataset"] = df
+
+    return df
+
+
     # -----------------------------------
     # FIX COLUMN NAME ISSUES (NEW)
     # -----------------------------------
