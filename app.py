@@ -9,6 +9,7 @@ import modules.sustainability as sustainability
 import modules.insights as insights
 import modules.data_utils as data_utils
 import modules.theme as theme
+from fpdf import FPDF
 
 
 # ------------------------------------------------
@@ -26,18 +27,16 @@ theme.apply_theme()
 
 
 # ------------------------------------------------
-# GLOBAL STYLING (NEW)
+# GLOBAL STYLING
 # ------------------------------------------------
 
 st.markdown("""
 <style>
 
-/* remove extra padding from top */
 .block-container {
     padding-top: 1.5rem;
 }
 
-/* main product title */
 .app-title {
     font-size: 42px;
     font-weight: 700;
@@ -46,7 +45,6 @@ st.markdown("""
     -webkit-text-fill-color: transparent;
 }
 
-/* subtitle */
 .app-subtitle {
     font-size: 15px;
     color: #94a3b8;
@@ -54,24 +52,20 @@ st.markdown("""
     margin-bottom: 30px;
 }
 
-/* section headers */
 h1, h2, h3 {
     font-weight: 600;
     letter-spacing: 0.3px;
 }
 
-/* sidebar spacing */
 section[data-testid="stSidebar"] {
     padding-top: 10px;
 }
 
-/* sidebar navigation radio buttons */
 div[role="radiogroup"] > label {
     padding: 8px 6px;
     font-size: 15px;
 }
 
-/* filter titles */
 .sidebar-title {
     font-size: 14px;
     font-weight: 600;
@@ -83,7 +77,7 @@ div[role="radiogroup"] > label {
 
 
 # ------------------------------------------------
-# GLOBAL HEADER (Better typography)
+# GLOBAL HEADER
 # ------------------------------------------------
 
 st.markdown(
@@ -93,6 +87,45 @@ st.markdown(
 """,
 unsafe_allow_html=True
 )
+
+
+# ------------------------------------------------
+# PDF REPORT FUNCTION
+# ------------------------------------------------
+
+def generate_pdf_report(df):
+
+    pdf = FPDF()
+    pdf.add_page()
+
+    pdf.set_font("Arial", "B", 16)
+    pdf.cell(0, 10, "ReBox Analytics Report", ln=True)
+
+    pdf.set_font("Arial", "", 12)
+    pdf.cell(0, 10, f"Total Records: {len(df)}", ln=True)
+
+    if "Area" in df.columns:
+        pdf.cell(0, 10, f"Areas: {df['Area'].nunique()}", ln=True)
+
+    if "Material" in df.columns:
+        pdf.cell(0, 10, f"Materials: {df['Material'].nunique()}", ln=True)
+
+    if "Supplier" in df.columns:
+        pdf.cell(0, 10, f"Suppliers: {df['Supplier'].nunique()}", ln=True)
+
+    pdf.ln(10)
+
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(0, 10, "Sample Data:", ln=True)
+
+    pdf.set_font("Arial", "", 10)
+
+    sample = df.head(10)
+
+    for _, row in sample.iterrows():
+        pdf.cell(0, 8, str(row.values), ln=True)
+
+    return pdf.output(dest="S").encode("latin-1")
 
 
 # ------------------------------------------------
@@ -176,15 +209,11 @@ def main():
 
         if df is not None:
 
-            # FIX column issues automatically
             df.columns = df.columns.str.strip()
 
             st.markdown('<div class="sidebar-title">Filters</div>', unsafe_allow_html=True)
 
-            # SAFE FILTER CREATION
-
             if "Area" in df.columns:
-
                 st.multiselect(
                     "Area",
                     options=sorted(df["Area"].dropna().unique()),
@@ -192,7 +221,6 @@ def main():
                 )
 
             if "Material" in df.columns:
-
                 st.multiselect(
                     "Material",
                     options=sorted(df["Material"].dropna().unique()),
@@ -200,7 +228,6 @@ def main():
                 )
 
             if "Supplier" in df.columns:
-
                 st.multiselect(
                     "Supplier",
                     options=sorted(df["Supplier"].dropna().unique()),
@@ -209,7 +236,28 @@ def main():
 
         st.markdown("---")
 
+
+        # ------------------------------------------------
+        # DOWNLOAD PDF REPORT
+        # ------------------------------------------------
+
+        if df is not None:
+
+            pdf_bytes = generate_pdf_report(df)
+
+            st.download_button(
+                label="Download Analytics Report (PDF)",
+                data=pdf_bytes,
+                file_name="rebox_report.pdf",
+                mime="application/pdf",
+                use_container_width=True
+            )
+
+
+        # ------------------------------------------------
         # USER PANEL
+        # ------------------------------------------------
+
         with st.container(border=True):
 
             st.write(f"User: **{st.session_state['username']}**")
